@@ -23,18 +23,27 @@ def get_version():
 
 def setup_logging():
     """Configure logging for the application"""
-    log_dir = Path("/var/log/quipu")
-    log_dir.mkdir(exist_ok=True)
+    import os
+    
+    # Get log file path from environment variable or use default
+    log_file = os.getenv('LOG_FILE', '/var/log/quipu/quipu.log')
+    log_dir = Path(log_file).parent
     
     handlers = [logging.StreamHandler(sys.stdout)]
     
-    # Only add file handler if running in production
-    if log_dir.exists() and log_dir.is_dir():
-        try:
-            handlers.append(logging.FileHandler(log_dir / "quipu.log"))
-        except PermissionError:
-            # If we can't write to /var/log/quipu, just use stdout
-            pass
+    # Try to create log directory and add file handler
+    try:
+        log_dir.mkdir(parents=True, exist_ok=True)
+        # Test if we can write to the log file
+        test_file = log_dir / 'test_write.tmp'
+        test_file.touch()
+        test_file.unlink()
+        # If test successful, add file handler
+        handlers.append(logging.FileHandler(log_file))
+        print(f"Logging to file: {log_file}")
+    except (PermissionError, OSError) as e:
+        print(f"Warning: Cannot write to {log_file}, using stdout only. Error: {e}")
+        # Just use stdout if file logging fails
     
     logging.basicConfig(
         level=logging.INFO,
